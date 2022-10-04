@@ -23,6 +23,11 @@ public static class ReserveFunction
             using var bodyReader = new StreamReader(request.Body);
             var body = await bodyReader.ReadToEndAsync();
             var order = JsonConvert.DeserializeObject<Order>(body);
+            if (order is null)
+            {
+                logger.LogWarning("Null or empty request body is received by {function}.", nameof(ReserveFunction));
+                return new BadRequestResult();
+            }
 
             // Dynamic binding is used to avoid creating empty blobs in case of 400 (BadRequest)
             var blobAttribute = new BlobAttribute("orders/{datetime:yyyy-MM-dd}/{rand-guid}.json")
