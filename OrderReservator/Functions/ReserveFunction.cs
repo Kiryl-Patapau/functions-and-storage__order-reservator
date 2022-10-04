@@ -18,15 +18,13 @@ public static class ReserveFunction
         IBinder binder,
         ILogger logger)
     {
-        using var bodyReader = new StreamReader(request.Body);
-        var body = await bodyReader.ReadToEndAsync();
-
         try
         {
-            var items = JsonConvert.DeserializeObject<OrderItem[]>(body);
-            
+            using var bodyReader = new StreamReader(request.Body);
+            var body = await bodyReader.ReadToEndAsync();
+            var order = JsonConvert.DeserializeObject<Order>(body);
+
             // Dynamic binding is used to avoid creating empty blobs in case of 400 (BadRequest)
-            var order = JsonConvert.SerializeObject(items);
             var blobAttribute = new BlobAttribute("orders/{datetime:yyyy-MM-dd}/{rand-guid}.json")
             {
                 Access = FileAccess.Write,
@@ -34,7 +32,7 @@ public static class ReserveFunction
             };
             using var orderStream = binder.Bind<Stream>(blobAttribute);
             using var writer = new StreamWriter(orderStream);
-            await writer.WriteLineAsync(order);
+            await writer.WriteLineAsync(JsonConvert.SerializeObject(order));
         }
         catch (JsonException exception)
         {
