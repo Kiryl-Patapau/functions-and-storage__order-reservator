@@ -14,8 +14,8 @@ public static class ReserveFunction
 {
     [FunctionName("ReserveFunction")]
     public static async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Function, "POST", Route = "reserve")] HttpRequest request,
-        [Blob("orders/{rand-guid}.json", FileAccess.Write, Connection = "AzureWebJobsStorage")] Stream orderStream,
+        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "reserve")] HttpRequest request,
+        IBinder binder,
         ILogger logger)
     {
         using var bodyReader = new StreamReader(request.Body);
@@ -24,8 +24,15 @@ public static class ReserveFunction
         try
         {
             var items = JsonConvert.DeserializeObject<OrderItem[]>(body);
-
+            
+            // Dynamic binding is used to avoid creating empty blobs in case of 400 (BadRequest)
             var order = JsonConvert.SerializeObject(items);
+            var blobAttribute = new BlobAttribute("orders/{datetime:yyyy-MM-dd}/{rand-guid}.json")
+            {
+                Access = FileAccess.Write,
+                Connection = "OrdersStorage"
+            };
+            using var orderStream = binder.Bind<Stream>(blobAttribute);
             using var writer = new StreamWriter(orderStream);
             await writer.WriteLineAsync(order);
         }
